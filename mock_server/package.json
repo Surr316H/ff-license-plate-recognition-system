@@ -1,5 +1,6 @@
 {
   "name": "license-plate-websocket-server",
+  "type": "module",
   "version": "1.0.0",
   "description": "WebSocket server for license plate recognition mock data",
   "main": "server.js",

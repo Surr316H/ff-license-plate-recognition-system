@@ -1,55 +1,59 @@
-const WebSocket = require('ws');
-const http = require('http');
-const express = require('express');
-const { generateMockData } = require('./mock-utils');
+import WebSocket, { WebSocketServer } from "ws";
+import http from "http";
+import express from "express";
+import { generateMockData } from "./mock-utils.js";
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocketServer({ server });
 const clients = new Set();
-wss.on('connection', (ws, req) => {
-  console.log('New client connected from:', req.socket.remoteAddress);
+wss.on("connection", (ws, req) => {
+  console.log("New client connected from:", req.socket.remoteAddress);
   clients.add(ws);
-  
-  ws.send(JSON.stringify({
-    type: 'connection',
-    message: 'Connected to License Plate Recognition Server',
-    timestamp: new Date()
-  }));
-  
-  ws.on('message', (message) => {
+
+  ws.send(
+    JSON.stringify({
+      type: "connection",
+      message: "Connected to License Plate Recognition Server",
+      timestamp: new Date(),
+    })
+  );
+
+  ws.on("message", (message) => {
     try {
       const data = JSON.parse(message);
-      console.log('Received from client:', data);
-      
-      ws.send(JSON.stringify({
-        type: 'echo',
-        data: data,
-        timestamp: new Date()
-      }));
+      console.log("Received from client:", data);
+
+      ws.send(
+        JSON.stringify({
+          type: "echo",
+          data: data,
+          timestamp: new Date(),
+        })
+      );
     } catch (error) {
-      console.error('Error parsing message:', error);
+      console.error("Error parsing message:", error);
     }
   });
-  
-  ws.on('close', () => {
-    console.log('Client disconnected');
+
+  ws.on("close", () => {
+    console.log("Client disconnected");
     clients.delete(ws);
   });
-  
-  ws.on('error', (error) => {
-    console.error('WebSocket error:', error);
+
+  ws.on("error", (error) => {
+    console.error("WebSocket error:", error);
     clients.delete(ws);
   });
 });
 
 const broadcastData = (data) => {
   const message = JSON.stringify({
-    type: 'licenseplate',
-    data: data
+    type: "licenseplate",
+    data: data,
   });
-  
-  clients.forEach(client => {
+
+  clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);
     }
@@ -59,12 +63,15 @@ const broadcastData = (data) => {
 let dataInterval;
 
 const startDataGeneration = () => {
-  console.log('Starting data generation...');
+  console.log("Starting data generation...");
   dataInterval = setInterval(() => {
     if (clients.size > 0) {
       const mockData = generateMockData();
       broadcastData(mockData);
-      console.log(`Sent data to ${clients.size} clients:`, mockData.plateNumber);
+      console.log(
+        `Sent data to ${clients.size} clients:`,
+        mockData.plateNumber
+      );
     }
   }, 100);
 };
@@ -73,14 +80,14 @@ const stopDataGeneration = () => {
   if (dataInterval) {
     clearInterval(dataInterval);
     dataInterval = null;
-    console.log('Data generation stopped');
+    console.log("Data generation stopped");
   }
 };
 
 startDataGeneration();
 
 // Basic HTTP endpoints
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.send(`
     <html>
       <head>
@@ -155,27 +162,27 @@ app.get('/', (req, res) => {
   `);
 });
 
-app.get('/api/status', (req, res) => {
+app.get("/api/status", (req, res) => {
   res.json({
-    status: 'running',
+    status: "running",
     connectedClients: clients.size,
-    dataGeneration: dataInterval ? 'active' : 'stopped',
-    timestamp: new Date()
+    dataGeneration: dataInterval ? "active" : "stopped",
+    timestamp: new Date(),
   });
 });
 
-process.on('SIGINT', () => {
-  console.log('\nShutting down server...');
+process.on("SIGINT", () => {
+  console.log("\nShutting down server...");
   stopDataGeneration();
-  
-  clients.forEach(client => {
+
+  clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.close();
     }
   });
-  
+
   server.close(() => {
-    console.log('Server closed');
+    console.log("Server closed");
     process.exit(0);
   });
 });
@@ -187,4 +194,4 @@ server.listen(PORT, () => {
   console.log(`HTTP server ready at http://localhost:${PORT}`);
 });
 
-module.exports = { app, server, wss };
+export { app, server, wss };
